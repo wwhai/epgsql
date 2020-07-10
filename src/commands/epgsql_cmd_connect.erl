@@ -92,7 +92,16 @@ open_socket(SockOpts, #{host := Host} = ConnectOpts) ->
     Timeout = maps:get(timeout, ConnectOpts, 5000),
     Deadline = deadline(Timeout),
     Port = maps:get(port, ConnectOpts, 5432),
-    case gen_tcp:connect(Host, Port, SockOpts, Timeout) of
+    {_, IpTuple} = inet:parse_address(Host),
+    NewOpts = case erlang:tuple_size(IpTuple) of
+        8 ->
+            SockOpts ++ [inet6];
+        4 ->
+            SockOpts ++ [inet];
+        _ ->
+            SockOpts
+    end,
+    case gen_tcp:connect(Host, Port, NewOpts, Timeout) of
        {ok, Sock} ->
            client_handshake(Sock, ConnectOpts, Deadline);
        {error, _Reason} = Error ->
